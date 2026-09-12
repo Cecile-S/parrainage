@@ -1,0 +1,9 @@
+services:
+  parrainage-app:
+    build: .
+    container_name: parrainage-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3010:3000"
+    env_file:
+      - .env
