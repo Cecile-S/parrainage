@@ -51,3 +51,23 @@ export async function togglePlatformActive(id: string, active: boolean) {
   await supabase.from("review_platforms").update({ active }).eq("id", id);
   revalidatePath("/admin/plateformes-avis");
 }
+
+export async function updatePlatformDetails(
+  id: string,
+  name: string,
+  url: string,
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("review_platforms")
+    .update({ name: name.trim(), url: url.trim() })
+    .eq("id", id);
+  revalidatePath("/admin/plateformes-avis");
+  return { error: error?.message };
+}
+
+export async function deletePlatform(id: string) {
+  const supabase = await createClient();
+  await supabase.from("review_platforms").delete().eq("id", id);
+  revalidatePath("/admin/plateformes-avis");
+}
