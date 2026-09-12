@@ -1,74 +1,82 @@
 # Parrainage — app ambassadeurs multi-activités
 
-Squelette d'architecture pour l'app de parrainage/ambassadeurs (Capifrance
-immo, Moonee courtage & assurance), basé sur l'analyse comparative des
-plateformes existantes (Yuccan, Boast, JeudiMerci, Linkupp + références US).
+App de parrainage/ambassadeurs (Capifrance immo, Moonee courtage &
+assurance), basée sur l'analyse comparative des plateformes existantes
+(Yuccan, Boast, JeudiMerci, Linkupp + références US).
 
-## Stack (gratuite pour démarrer)
+**En ligne :** https://piringa.cecilesow.fr
 
-- **Next.js** (App Router, TypeScript, Tailwind) — open source, gratuit.
-- **Supabase** — Postgres + Auth (lien magique) + Storage. Le [plan gratuit](https://supabase.com/pricing)
-  suffit largement pour un MVP (500 Mo de base de données, 50 000 utilisateurs
-  actifs/mois sur l'auth, 1 Go de stockage). Tu ne paies que si le projet
-  grossit vraiment.
-- **PWA** installable (manifest.json), sans passage par les stores.
+## Stack
 
-Aucun coût fixe à ce stade : hébergement du front sur Vercel (plan gratuit)
-+ Supabase (plan gratuit) = 0 €/mois pour développer et tester.
+- **Next.js** (App Router, TypeScript, Tailwind).
+- **Supabase** — Postgres + Auth (connexion par code à 6 chiffres) + RLS.
+- **PWA** installable (manifest.json).
+- **Déploiement** : Docker sur le VPS Contabo de production, derrière Nginx
+  (reverse proxy + certificat Let's Encrypt), aux côtés des autres services
+  déjà hébergés là (Odoo, n8n, etc.) — voir section Déploiement plus bas.
+- **Emails transactionnels (Auth)** : SMTP custom via la boîte
+  `parrainage@cecilesow.fr` (hébergement O2switch), configuré dans Supabase
+  Project Settings → Auth → SMTP. Remplace le service mail interne de
+  Supabase, trop limité en volume pour un usage réel.
 
-## Mise en route
+## Mise en route (développement local)
 
-1. Crée un projet sur [supabase.com](https://supabase.com/dashboard) (gratuit).
-2. Dans le SQL editor du projet, exécute le contenu de
-   [`supabase/schema.sql`](supabase/schema.sql) — il crée toutes les tables,
-   les policies RLS et le trigger de création de profil.
-3. Copie `.env.local.example` vers `.env.local` et renseigne les clés
+1. Copie `.env.local.example` vers `.env.local` et renseigne les clés
    (Project Settings → API dans le dashboard Supabase).
-4. Lance le serveur de développement :
+2. Lance le serveur de développement :
 
    ```bash
    npm run dev
    ```
 
-5. Va sur [http://localhost:3000](http://localhost:3000) — tu es redirigé
-   vers `/login`, entre un email, le lien magique arrive dans la boîte mail
-   associée au projet Supabase (en dev, Supabase utilise son propre service
-   mail, limité en volume — un provider mail dédié sera à configurer avant
-   la prod, dans Project Settings → Auth → SMTP).
+3. Va sur [http://localhost:3000](http://localhost:3000) — tu es redirigé
+   vers `/login`, entre un email, tu reçois un code à 6 chiffres par email
+   (via `parrainage@cecilesow.fr`).
 
-## Ce que contient ce squelette
+Le schéma de base (`supabase/schema.sql`) et les migrations
+(`supabase/migrations/`) sont déjà appliqués sur le projet Supabase de
+production — à exécuter uniquement sur un nouveau projet Supabase.
 
-- **Auth par lien magique** (`src/app/login`, `src/app/auth/callback`) —
-  aucun mot de passe, session gérée via cookies (`src/lib/supabase`,
-  `src/middleware.ts`).
+## Ce que contient l'app aujourd'hui
+
+- **Auth par code à 6 chiffres** (`src/app/login`) — aucun mot de passe,
+  session gérée via cookies. Un code plutôt qu'un lien cliquable : les liens
+  se sont révélés invalidés par des scanners de sécurité email avant que
+  l'utilisateur ne clique dessus.
 - **Modèle de données complet** (`supabase/schema.sql`) : profils, activités,
   programmes, parrainages, consentements filleul, étapes de gamification,
-  récompenses, avis — voir section 8 de l'analyse.
-- **Back-office multi-activités** (`src/app/(app)`) : layout protégé avec
-  liste des activités de l'utilisateur, tableau de bord listant ses
-  parrainages.
+  récompenses, avis.
+- **Back-office multi-activités** (`src/app/(app)`) : layout protégé,
+  tableau de bord listant les parrainages de l'ambassadeur.
+- **Déclaration de filleul + consentement (P0)** :
+  - `src/app/(app)/dashboard` : formulaire de déclaration d'un filleul
+    (nom, email/téléphone, activité) → génère un lien de consentement à
+    usage unique à partager au filleul.
+  - `src/app/consentement/[id]` : page publique (non authentifiée) où le
+    filleul confirme son accord — horodaté, texte exact enregistré, preuve
+    (IP, user-agent) — via deux fonctions SQL `security definer`
+    (`get_referral_for_consent`, `confirm_referee_consent`) qui exposent
+    uniquement cette ligne précise, sans ouvrir l'accès public au reste de
+    la table.
 - **Espace RGPD** (`src/app/(app)/mes-donnees`) : page stub pour
-  export/suppression des données (à implémenter en P0).
+  export/suppression des données (reste à implémenter).
 - **PWA** : `public/manifest.json` référencé dans le layout racine. Il manque
-  encore les icônes (`public/icons/icon-192.png`, `icon-512.png`) — à générer
-  avant la mise en prod.
+  encore les icônes (`public/icons/icon-192.png`, `icon-512.png`).
 
 ## Ce qui n'est volontairement PAS encore fait
 
-Ce squelette pose l'architecture ; le développement fonctionnel reste à
-faire, dans l'ordre de priorité de l'analyse :
-
-**P0**
-- Formulaire de déclaration d'un filleul par l'ambassadeur
-- Flux de double opt-in du filleul (case à cocher horodatée ou lien de
-  confirmation envoyé directement au filleul) — **obligatoire avant tout
-  contact commercial**, voir section 5 de l'analyse (loi n° 2025-594 du
-  11 août 2026)
+**P0 — reste à faire**
+- Envoi automatique du lien de consentement par email/SMS au filleul
+  (aujourd'hui l'ambassadeur doit le copier-coller lui-même) — nécessite un
+  SMTP applicatif séparé de celui de Supabase Auth
 - Paiement/récompense (au moins un mode : cash ou carte-cadeau)
-- Export et suppression réels des données personnelles
+- Export et suppression réels des données personnelles (RGPD)
+- Policies RLS plus fines pour les rôles `pro` (accès aux parrainages de son
+  activité) et `admin` (multi-activités) — actuellement seul le rôle
+  `ambassadeur` a des policies
 
 **P1**
-- Parcours de gamification en étapes (les 9 actions, section 4)
+- Parcours de gamification en étapes (les 9 actions, section 4 de l'analyse)
 - Collecte d'avis multi-plateformes
 - Relances automatiques des ambassadeurs inactifs
 
@@ -78,18 +86,31 @@ faire, dans l'ordre de priorité de l'analyse :
 - Génération automatique de visuels (kits réseaux sociaux)
 - Dons à association comme récompense alternative
 
-## Points d'attention RGPD / conformité (déjà dans le schéma, à câbler)
+## Point d'attention RGPD / conformité
 
-- `referee_consents` stocke la preuve du consentement (date, canal, texte
-  accepté) — mais **aucun flux ne l'alimente encore**. Tant que ce flux
-  n'existe pas, ne pas déclencher de contact commercial vers un filleul
-  depuis cette app.
-- Les policies RLS actuelles sont volontairement simples ("chacun voit ses
-  propres données"). Avant le MVP P0, il faudra ajouter des policies pour le
-  rôle `pro` (accès aux parrainages de son activité uniquement) et `admin`.
+Le flux de consentement (section 5 de l'analyse, loi n° 2025-594 du
+11 août 2026) est désormais fonctionnel : aucun filleul n'est déclaré
+"consentement obtenu" sans être passé par la case à cocher horodatée sur
+`/consentement/[id]`. Ne jamais déclencher de contact commercial vers un
+filleul dont `referrals.status` n'est pas `consentement_obtenu`.
 
-## Déploiement
+## Déploiement (production)
 
-Le plus simple : [Vercel](https://vercel.com) (plan gratuit), en connectant
-ce dossier une fois poussé sur GitHub. Dis-moi quand tu veux le mettre sur
-GitHub, je peux préparer le repo.
+- **Serveur** : VPS Contabo (`84.247.161.15`), Ubuntu 24.04, accès SSH via
+  clé dédiée (`~/.ssh/contabo_parrainage`).
+- **Conteneur** : `docker-compose.yml` à la racine — build multi-stage
+  (`Dockerfile`, sortie Next.js `standalone`), exposé uniquement sur
+  `127.0.0.1:3010`.
+- **Reverse proxy** : Nginx, config dédiée dans
+  `/etc/nginx/sites-available/piringa.cecilesow.fr` sur le serveur (pas
+  versionnée dans ce repo), certificat Let's Encrypt auto-renouvelé.
+- **Mettre à jour la prod** après un push sur `main` :
+
+  ```bash
+  ssh -i ~/.ssh/contabo_parrainage root@84.247.161.15
+  cd /root/parrainage-app && git pull origin main && docker compose up -d --build
+  ```
+
+- Le fichier `.env` de production (clés Supabase, URL du site) vit
+  uniquement sur le serveur, dans `/root/parrainage-app/.env` — jamais
+  commité.
