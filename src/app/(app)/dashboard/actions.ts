@@ -77,3 +77,84 @@ export async function declareReferral(
     referralId: referral.id,
   };
 }
+
+export type RequestReviewState = {
+  status: "idle" | "success" | "error";
+  message?: string;
+  platformName?: string;
+  platformUrl?: string;
+};
+
+export async function requestReview(
+  _prevState: RequestReviewState,
+  formData: FormData,
+): Promise<RequestReviewState> {
+  const activityId = String(formData.get("activity_id") ?? "").trim();
+
+  if (!activityId) {
+    return { status: "error", message: "Choisis une activité." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { status: "error", message: "Session expirée, reconnecte-toi." };
+  }
+
+  const { data: platformId, error: pickError } = await supabase.rpc(
+    "pick_review_platform",
+    { p_activity_id: activityId },
+  );
+
+  if (pickError || !platformId) {
+    return {
+      status: "error",
+      message:
+        "Aucune plateforme d'avis configurée pour cette activité pour le moment.",
+    };
+  }
+
+  const { data: platform, error: platformError } = await supabase
+    .from("review_platforms")
+    .select("name, url")
+    .eq("id", platformId)
+    .single();
+
+  if (platformError || !platform) {
+    return { status: "error", message: "Plateforme introuvable." };
+  }
+
+  const { error: insertError } = await supabase.from("reviews").insert({
+    ambassador_id: user.id,
+    activity_id: activityId,
+    platform_id: platformId,
+    platform: platform.name,
+    status: "en_attente",
+  });
+
+  if (insertError) {
+    return { status: "error", message: insertError.message };
+  }
+
+  revalidatePath("/dashboard");
+
+  return {
+    status: "success",
+    message: `Laisse ton avis sur ${platform.name} :`,
+    platformName: platform.name,
+    platformUrl: platform.url,
+  };
+}
+
+export async function confirmReviewLeft(reviewId: string) {
+  const supabase = await createClient();
+  await supabase
+    .from("reviews")
+    .update({ status: "confirmee", confirmed_at: new Date().toISOString() })
+    .eq("id", reviewId);
+
+  revalidatePath("/dashboard");
+}

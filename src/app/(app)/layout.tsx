@@ -19,9 +19,10 @@ export default async function AppLayout({
 
   // Squelette : activités disponibles pour l'utilisateur connecté.
   // Un "ambassadeur" multi-activités verra ici Capifrance / Moonee / etc.
-  const { data: activities } = await supabase
-    .from("activities")
-    .select("id, name, slug");
+  const [{ data: activities }, { data: profile }] = await Promise.all([
+    supabase.from("activities").select("id, name, slug"),
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -35,6 +36,11 @@ export default async function AppLayout({
             <Link href="/mes-donnees" className="hover:text-neutral-900">
               Mes données
             </Link>
+            {profile?.role === "admin" && (
+              <Link href="/admin" className="hover:text-neutral-900">
+                Administration
+              </Link>
+            )}
           </nav>
         </div>
         <form action={signOut}>
