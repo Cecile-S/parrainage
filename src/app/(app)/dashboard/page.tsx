@@ -3,14 +3,7 @@ import { DeclareReferralForm } from "./declare-referral-form";
 import { RequestReviewForm } from "./request-review-form";
 import { ShareKit } from "./share-kit";
 import { ReviewsList } from "./reviews-list";
-
-const STATUS_LABELS: Record<string, string> = {
-  en_attente: "En attente de consentement",
-  consentement_obtenu: "Consentement obtenu",
-  en_cours: "En cours",
-  conclu: "Conclu",
-  refuse: "Refusé",
-};
+import { ReferralKanban } from "./referral-kanban";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -66,40 +59,18 @@ export default async function DashboardPage() {
           ci-dessus.
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {referrals.map((r) => {
-            const reward = (
+        <ReferralKanban
+          referrals={referrals.map((r) => ({
+            id: r.id,
+            referee_name: r.referee_name,
+            status: r.status,
+            reward: (
               r.rewards as unknown as
                 | { amount: number | null; payment_status: string }[]
                 | null
-            )?.[0];
-            return (
-              <li
-                key={r.id}
-                className="flex items-center justify-between rounded-md border border-neutral-200 px-4 py-3 text-sm"
-              >
-                <span>{r.referee_name}</span>
-                <span className="flex items-center gap-3">
-                  <span className="text-neutral-500">
-                    {STATUS_LABELS[r.status] ?? r.status}
-                  </span>
-                  {reward && (
-                    <span
-                      className={
-                        reward.payment_status === "paye"
-                          ? "text-green-600"
-                          : "text-orange-600"
-                      }
-                    >
-                      {reward.amount} € —{" "}
-                      {reward.payment_status === "paye" ? "payé" : "à venir"}
-                    </span>
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+            )?.[0],
+          }))}
+        />
       )}
 
       <RequestReviewForm activities={activities ?? []} />
