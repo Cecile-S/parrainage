@@ -31,7 +31,9 @@ export default function MesDonneesPage() {
         </div>
         <div className="rounded-md border border-neutral-200 p-4">
           <p className="font-medium">Politique de confidentialité</p>
-          <p className="text-neutral-500">À rédiger avant le lancement.</p>
+          <a href="/confidentialite" className="text-neutral-500 underline">
+            Consulter la politique de confidentialité
+          </a>
         </div>
       </div>
     </div>

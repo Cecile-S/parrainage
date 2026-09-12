@@ -45,6 +45,13 @@ export default async function ConsentPage({
       ) : (
         <ConsentForm action={action} consentText={CONSENT_TEXT} />
       )}
+
+      <a
+        href="/confidentialite"
+        className="text-center text-xs text-neutral-400 underline"
+      >
+        Politique de confidentialité
+      </a>
     </main>
   );
 }

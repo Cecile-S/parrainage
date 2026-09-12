@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from("referrals")
-      .select("id, referee_name, status, created_at")
+      .select("id, referee_name, status, created_at, rewards(amount, payment_status)")
       .order("created_at", { ascending: false }),
     supabase.from("activities").select("id, name").order("name"),
     supabase
@@ -67,17 +67,38 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
-          {referrals.map((r) => (
-            <li
-              key={r.id}
-              className="flex items-center justify-between rounded-md border border-neutral-200 px-4 py-3 text-sm"
-            >
-              <span>{r.referee_name}</span>
-              <span className="text-neutral-500">
-                {STATUS_LABELS[r.status] ?? r.status}
-              </span>
-            </li>
-          ))}
+          {referrals.map((r) => {
+            const reward = (
+              r.rewards as unknown as
+                | { amount: number | null; payment_status: string }[]
+                | null
+            )?.[0];
+            return (
+              <li
+                key={r.id}
+                className="flex items-center justify-between rounded-md border border-neutral-200 px-4 py-3 text-sm"
+              >
+                <span>{r.referee_name}</span>
+                <span className="flex items-center gap-3">
+                  <span className="text-neutral-500">
+                    {STATUS_LABELS[r.status] ?? r.status}
+                  </span>
+                  {reward && (
+                    <span
+                      className={
+                        reward.payment_status === "paye"
+                          ? "text-green-600"
+                          : "text-orange-600"
+                      }
+                    >
+                      {reward.amount} € —{" "}
+                      {reward.payment_status === "paye" ? "payé" : "à venir"}
+                    </span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
 

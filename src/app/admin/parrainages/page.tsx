@@ -1,21 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
-
-const STATUS_LABELS: Record<string, string> = {
-  en_attente: "En attente de consentement",
-  consentement_obtenu: "Consentement obtenu",
-  en_cours: "En cours",
-  conclu: "Conclu",
-  refuse: "Refusé",
-};
+import { ReferralRow } from "./referral-row";
 
 export default async function AdminReferralsPage() {
   const supabase = await createClient();
-  const { data: referrals } = await supabase
-    .from("referrals")
-    .select(
-      "id, referee_name, status, created_at, activities(name), profiles(email), referee_consents(consented_at)",
-    )
-    .order("created_at", { ascending: false });
+  const [{ data: referrals }, { data: programs }] = await Promise.all([
+    supabase
+      .from("referrals")
+      .select(
+        "id, referee_name, status, created_at, activity_id, activities(name), profiles(email), referee_consents(consented_at), rewards(id, type, amount, payment_status)",
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("programs")
+      .select("activity_id, reward_rules")
+      .eq("active", true),
+  ]);
+
+  const defaultAmountByActivity = new Map<string, number>();
+  for (const p of programs ?? []) {
+    const rules = p.reward_rules as { cash_amount?: number } | null;
+    if (!defaultAmountByActivity.has(p.activity_id)) {
+      defaultAmountByActivity.set(p.activity_id, rules?.cash_amount ?? 0);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -23,7 +30,8 @@ export default async function AdminReferralsPage() {
         <h1 className="text-xl font-semibold">Parrainages</h1>
         <p className="text-sm text-neutral-500">
           Tous les parrainages déclarés, toutes activités et tous
-          ambassadeurs confondus.
+          ambassadeurs confondus. Marque un parrainage &quot;Conclu&quot;
+          pour déclencher la création de sa récompense.
         </p>
       </div>
 
@@ -39,7 +47,7 @@ export default async function AdminReferralsPage() {
                 <th className="py-2 pr-4">Activité</th>
                 <th className="py-2 pr-4">Statut</th>
                 <th className="py-2 pr-4">Consentement</th>
-                <th className="py-2 pr-4">Déclaré le</th>
+                <th className="py-2 pr-4">Récompense</th>
               </tr>
             </thead>
             <tbody>
@@ -49,25 +57,29 @@ export default async function AdminReferralsPage() {
                 const consent = (
                   r.referee_consents as unknown as { consented_at: string | null }[]
                 )?.[0];
+                const reward = (
+                  r.rewards as unknown as {
+                    id: string;
+                    type: string;
+                    amount: number | null;
+                    payment_status: string;
+                  }[]
+                )?.[0];
                 return (
-                  <tr key={r.id} className="border-b border-neutral-100">
-                    <td className="py-2 pr-4">{r.referee_name}</td>
-                    <td className="py-2 pr-4 text-neutral-500">
-                      {ambassador?.email}
-                    </td>
-                    <td className="py-2 pr-4">{activity?.name}</td>
-                    <td className="py-2 pr-4">
-                      {STATUS_LABELS[r.status] ?? r.status}
-                    </td>
-                    <td className="py-2 pr-4 text-neutral-500">
-                      {consent?.consented_at
-                        ? new Date(consent.consented_at).toLocaleDateString("fr-FR")
-                        : "—"}
-                    </td>
-                    <td className="py-2 pr-4 text-neutral-500">
-                      {new Date(r.created_at).toLocaleDateString("fr-FR")}
-                    </td>
-                  </tr>
+                  <ReferralRow
+                    key={r.id}
+                    referral={{
+                      id: r.id,
+                      referee_name: r.referee_name,
+                      status: r.status,
+                      activityName: activity?.name ?? "",
+                      ambassadorEmail: ambassador?.email ?? "",
+                      consentedAt: consent?.consented_at ?? null,
+                      createdAt: r.created_at,
+                    }}
+                    reward={reward ?? null}
+                    defaultAmount={defaultAmountByActivity.get(r.activity_id) ?? 0}
+                  />
                 );
               })}
             </tbody>
