@@ -62,6 +62,31 @@ production — à exécuter uniquement sur un nouveau projet Supabase.
   export/suppression des données (reste à implémenter).
 - **PWA** : `public/manifest.json` référencé dans le layout racine. Il manque
   encore les icônes (`public/icons/icon-192.png`, `icon-512.png`).
+- **Demande d'avis multi-plateformes, pondérée** (inspiré de Yuccan) :
+  - `review_platforms` : plateformes d'avis extensibles par activité
+    (Google, Immodvisor... ajoutables sans toucher au code), chacune avec un
+    poids configurable.
+  - `pick_review_platform()` (SQL, `security definer`) : à chaque demande,
+    choisit la plateforme dont la part réelle est la plus en retard sur sa
+    part cible (déficit pondéré, "smooth weighted round-robin") — vérifié
+    par simulation : poids 5/3 → répartition exacte 10/6 sur 16 demandes.
+  - Le tableau de bord ambassadeur propose "Laisser un avis", affiche la
+    plateforme choisie + lien direct, et un bouton d'auto-confirmation (pas
+    d'API pour vérifier automatiquement qu'un avis a été posté).
+- **Kit de partage réseaux sociaux** (inspiré de Boast, `share_templates`) :
+  messages prêts à personnaliser par canal (LinkedIn, story Instagram,
+  SMS...) pour aider l'ambassadeur à recruter des filleuls sur les réseaux
+  sociaux, affichés sur le tableau de bord avec bouton copier.
+- **Back-office admin** (`src/app/admin`, rôle `admin` uniquement) :
+  - Vue d'ensemble (compteurs tous activités confondues)
+  - Gestion des activités, des programmes (récompense par activité,
+    multi-programme — plusieurs programmes possibles par activité)
+  - Gestion des plateformes d'avis et de leurs poids (avec % de répartition
+    affiché en direct)
+  - Gestion du kit de partage
+  - Suivi complet : tous les parrainages et tous les avis, toutes
+    activités et tous ambassadeurs confondus
+  - Ton compte (`cecile@cecilesow.fr`) a le rôle `admin`.
 
 ## Ce qui n'est volontairement PAS encore fait
 
@@ -69,22 +94,34 @@ production — à exécuter uniquement sur un nouveau projet Supabase.
 - Envoi automatique du lien de consentement par email/SMS au filleul
   (aujourd'hui l'ambassadeur doit le copier-coller lui-même) — nécessite un
   SMTP applicatif séparé de celui de Supabase Auth
-- Paiement/récompense (au moins un mode : cash ou carte-cadeau)
+- Paiement/récompense (au moins un mode : cash ou carte-cadeau) — le montant
+  est configurable côté admin (`programs.reward_rules`) mais rien ne
+  déclenche/traque le paiement réel
 - Export et suppression réels des données personnelles (RGPD)
-- Policies RLS plus fines pour les rôles `pro` (accès aux parrainages de son
-  activité) et `admin` (multi-activités) — actuellement seul le rôle
-  `ambassadeur` a des policies
+- Policies RLS pour le rôle `pro` (accès aux parrainages de sa propre
+  activité uniquement, sans être admin multi-activités) — pas encore créées
 
 **P1**
 - Parcours de gamification en étapes (les 9 actions, section 4 de l'analyse)
-- Collecte d'avis multi-plateformes
 - Relances automatiques des ambassadeurs inactifs
+- Vérification automatique qu'un avis a bien été posté (nécessiterait les
+  API Google Business Profile / Immodvisor, payantes ou à négocier)
+- Nom affiché de l'ambassadeur (aujourd'hui dérivé de l'email dans le kit de
+  partage, faute d'un champ "nom" sur le profil)
 
 **P2**
 - Widget de preuve sociale pour site web
 - Système de points/paliers avancé
-- Génération automatique de visuels (kits réseaux sociaux)
+- Génération automatique de visuels (au-delà du texte du kit de partage)
 - Dons à association comme récompense alternative
+
+## ⚠️ À faire avant usage réel
+
+Les liens Google seedés dans `review_platforms` sont des **placeholders**
+(`REMPLACER-PAR-TON-LIEN-GOOGLE`) — à remplacer par tes vrais liens depuis
+`/admin/plateformes-avis` avant de proposer "Laisser un avis" à un vrai
+ambassadeur (le lien Google d'avis direct se trouve dans Google Business
+Profile → Demander des avis → copier le lien).
 
 ## Point d'attention RGPD / conformité
 
