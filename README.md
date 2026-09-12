@@ -95,17 +95,33 @@ production — à exécuter uniquement sur un nouveau projet Supabase.
   (aujourd'hui l'ambassadeur doit le copier-coller lui-même) — nécessite un
   SMTP applicatif séparé de celui de Supabase Auth
 - Paiement/récompense (au moins un mode : cash ou carte-cadeau) — le montant
-  est configurable côté admin (`programs.reward_rules`) mais rien ne
-  déclenche/traque le paiement réel
-- Export et suppression réels des données personnelles (RGPD)
+  est configurable côté admin (`programs.reward_rules`), et son suivi
+  (créer/marquer payée) se fait désormais depuis le kanban `/admin/parrainages`
+  — mais aucun paiement n'est réellement déclenché (pas d'intégration
+  bancaire/Stripe)
 - Policies RLS pour le rôle `pro` (accès aux parrainages de sa propre
   activité uniquement, sans être admin multi-activités) — pas encore créées
 
 **P1**
+- **Synchro Notion → Piringa pour le statut du lead** (direction précisée
+  par Cécile le 12/09/2026) : Notion (pages "Études" Capifrance/Moonee,
+  propriétés "Etat Capifrance"/"Etat Moonee") doit être la source de
+  vérité du statut d'un lead — une mise à jour dans Notion doit se
+  répercuter sur `referrals.status` dans Piringa, pas l'inverse. Nécessite :
+  1. un moyen fiable de relier une page Notion "Études" à un `referrals.id`
+     (aujourd'hui aucune correspondance n'existe — matching par nom/email à
+     concevoir, ou ajouter un champ "id Piringa" côté Notion)
+  2. un workflow n8n (Notion Trigger → appel à une fonction Supabase qui
+     met à jour `referrals.status`) — n8n a déjà des credentials Notion
+     configurés sur cette instance, réutilisables
+  3. les credentials Supabase du workflow n8n (à configurer par Cécile
+     directement dans n8n, je ne dois pas les manipuler)
 - Parcours de gamification en étapes (les 9 actions, section 4 de l'analyse)
-- Relances automatiques des ambassadeurs inactifs
+- Relances automatiques des ambassadeurs inactifs (relance manuelle en un
+  clic déjà en place sur `/admin/avis`)
 - Vérification automatique qu'un avis a bien été posté (nécessiterait les
-  API Google Business Profile / Immodvisor, payantes ou à négocier)
+  API Google Business Profile / Immodvisor, payantes ou à négocier — liée
+  au point Notion ci-dessus)
 - Nom affiché de l'ambassadeur (aujourd'hui dérivé de l'email dans le kit de
   partage, faute d'un champ "nom" sur le profil)
 
@@ -141,6 +157,9 @@ filleul dont `referrals.status` n'est pas `consentement_obtenu`.
 - **Reverse proxy** : Nginx, config dédiée dans
   `/etc/nginx/sites-available/piringa.cecilesow.fr` sur le serveur (pas
   versionnée dans ce repo), certificat Let's Encrypt auto-renouvelé.
+  `proxy_buffer_size`/`proxy_buffers` relevés à 32k (défaut Nginx trop
+  petit pour les en-têtes de session Supabase → 502 "upstream sent too big
+  header" constaté et corrigé le 12/09/2026).
 - **Mettre à jour la prod** après un push sur `main` :
 
   ```bash
