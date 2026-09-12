@@ -75,3 +75,16 @@ $$;
 
 grant execute on function public.get_referral_for_consent(uuid) to anon, authenticated;
 grant execute on function public.confirm_referee_consent(uuid, consent_channel, text, jsonb) to anon, authenticated;
+
+-- ============================================================
+-- 4. Rattrapage : comptes auth.users créés avant l'existence du
+--    trigger on_auth_user_created (ex: comptes de test antérieurs
+--    au déploiement du schéma) — sans ça, ils n'ont pas de profil
+--    et ne peuvent pas déclarer de parrainage.
+-- ============================================================
+
+insert into public.profiles (id, email, phone)
+select u.id, u.email, u.phone
+from auth.users u
+left join public.profiles p on p.id = u.id
+where p.id is null;
