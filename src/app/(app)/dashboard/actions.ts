@@ -7,6 +7,9 @@ export type DeclareReferralState = {
   status: "idle" | "success" | "error";
   message?: string;
   referralId?: string;
+  refereeName?: string;
+  refereeEmail?: string;
+  refereePhone?: string;
 };
 
 export async function declareReferral(
@@ -73,8 +76,11 @@ export async function declareReferral(
 
   return {
     status: "success",
-    message: "Filleul déclaré. Partage-lui le lien de consentement ci-dessous.",
+    message: "Filleul déclaré. Envoie-lui le lien de consentement ci-dessous.",
     referralId: referral.id,
+    refereeName,
+    refereeEmail,
+    refereePhone,
   };
 }
 

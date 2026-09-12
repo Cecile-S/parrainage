@@ -20,6 +20,10 @@ export function DeclareReferralForm({ activities }: { activities: Activity[] }) 
       ? `${window.location.origin}/consentement/${state.referralId}`
       : null;
 
+  const message = consentUrl
+    ? `Bonjour ${state.refereeName ?? ""}, pour te mettre en relation j'ai besoin de ton accord — c'est rapide : ${consentUrl}`
+    : "";
+
   function copyLink() {
     if (!consentUrl) return;
     navigator.clipboard.writeText(consentUrl);
@@ -58,9 +62,30 @@ export function DeclareReferralForm({ activities }: { activities: Activity[] }) 
               {copied ? "Copié !" : "Copier"}
             </button>
           </div>
+
+          <div className="flex flex-wrap gap-2">
+            {state.refereeEmail && (
+              <a
+                href={`mailto:${encodeURIComponent(state.refereeEmail)}?subject=${encodeURIComponent("Petite question avant de te mettre en relation")}&body=${encodeURIComponent(message)}`}
+                className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700"
+              >
+                Envoyer par email
+              </a>
+            )}
+            {state.refereePhone && (
+              <a
+                href={`sms:${encodeURIComponent(state.refereePhone)}?&body=${encodeURIComponent(message)}`}
+                className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-700"
+              >
+                Envoyer par SMS
+              </a>
+            )}
+          </div>
+
           <p className="text-xs text-neutral-500">
-            Envoie ce lien à ton filleul (SMS, email...). Il doit confirmer son
-            accord avant toute mise en relation commerciale.
+            Ces boutons ouvrent ton appli email/SMS avec le message déjà
+            rempli. Ton filleul doit confirmer son accord avant toute mise en
+            relation commerciale.
           </p>
           <button
             type="button"
