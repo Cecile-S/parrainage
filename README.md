@@ -104,18 +104,34 @@ production — à exécuter uniquement sur un nouveau projet Supabase.
 
 **P1**
 - **Synchro Notion → Piringa pour le statut du lead** (direction précisée
-  par Cécile le 12/09/2026) : Notion (pages "Études" Capifrance/Moonee,
-  propriétés "Etat Capifrance"/"Etat Moonee") doit être la source de
-  vérité du statut d'un lead — une mise à jour dans Notion doit se
-  répercuter sur `referrals.status` dans Piringa, pas l'inverse. Nécessite :
-  1. un moyen fiable de relier une page Notion "Études" à un `referrals.id`
-     (aujourd'hui aucune correspondance n'existe — matching par nom/email à
-     concevoir, ou ajouter un champ "id Piringa" côté Notion)
-  2. un workflow n8n (Notion Trigger → appel à une fonction Supabase qui
-     met à jour `referrals.status`) — n8n a déjà des credentials Notion
-     configurés sur cette instance, réutilisables
-  3. les credentials Supabase du workflow n8n (à configurer par Cécile
-     directement dans n8n, je ne dois pas les manipuler)
+  par Cécile le 12/09/2026) : Notion doit être la source de vérité du
+  statut d'un lead — une mise à jour dans Notion doit se répercuter sur
+  `referrals.status` dans Piringa, pas l'inverse. Le matching et le
+  workflow suivi diffèrent selon l'activité/programme :
+  - **Dans tous les cas** : création du contact (dans Notion) dès la
+    déclaration du parrainage côté Piringa.
+  - **Immobilier (Capifrance, ancien)** : suivi du Workflow Capifrance,
+    puis du Workflow mandat.
+  - **Immobilier neuf (Capifrance)** : suivi du Workflow Capifrance ET du
+    Workflow de visite (deux workflows en parallèle).
+  - **Assurance (Moonee)** : suivi de l'étude ou des études (propriété
+    "Etat Moonee" déjà repérée sur les pages "Études").
+
+  Reste à clarifier avant de construire, car ça détermine le schéma exact :
+  1. Les noms exacts des propriétés Notion pour "Workflow mandat" et
+     "Workflow de visite" (pas encore repérées dans le workspace —
+     seules "Workflow Capifrance"/"Etat Capifrance" et "Workflow
+     Moonee"/"Etat Moonee" ont été vues sur les pages "Études").
+  2. Comment distinguer "Immobilier" (ancien) de "Immobilier neuf" côté
+     Notion — un champ dédié, une base séparée, ou une valeur de statut ?
+  3. Un moyen fiable de relier une page Notion à un `referrals.id`
+     (aucune correspondance n'existe aujourd'hui — matching par nom/email
+     à concevoir, ou ajouter un champ "id Piringa" côté Notion).
+  4. Un workflow n8n par cas (Notion Trigger → appel à une fonction
+     Supabase qui met à jour `referrals.status`) — n8n a déjà des
+     credentials Notion configurés sur cette instance, réutilisables ; les
+     credentials Supabase du workflow sont à configurer par Cécile
+     directement dans n8n, je ne dois pas les manipuler.
 - Parcours de gamification en étapes (les 9 actions, section 4 de l'analyse)
 - Relances automatiques des ambassadeurs inactifs (relance manuelle en un
   clic déjà en place sur `/admin/avis`)
