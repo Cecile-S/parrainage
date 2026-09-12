@@ -36,9 +36,11 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    // On ne réutilise pas l'origine de request.nextUrl : derrière le
+    // reverse proxy, Next.js la reconstruit à partir du hostname interne
+    // du conteneur plutôt que du domaine public.
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin;
+    return NextResponse.redirect(new URL("/login", siteUrl));
   }
 
   return supabaseResponse;
